@@ -1,0 +1,11 @@
+pandas
+numpy
+pyshark
+scikit-learn
+streamlit
+#streamlit_extras
+psutil
+python-dotenv
+
+
+-e .
