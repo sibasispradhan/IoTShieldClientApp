@@ -7,7 +7,7 @@ import time
 import multiprocessing
 from datetime import datetime
 import subprocess
-import pip
+from subprocess import CalledProcessError
 import platform
 
 from dotenv import load_dotenv
@@ -120,14 +120,37 @@ with st.sidebar:
     send_emails_check = col_a.checkbox('Email Alerts',value=False,label_visibility='collapsed')
     st.session_state['user_email'] = st.text_input("User Email:", value="2021sc04667@wilp.bits-pilani.ac.in",label_visibility="collapsed")
 
-def install_tshark():    
+def install_tshark():
+    """Installs tshark based on the operating system."""
     try:
-        # Install tshark using pip
-        pip.main(['install', 'tshark'])
-    except Exception as e:
-        error_message = "An error occurred: {}".format(e)
-        print(error_message)
+        if platform.system() == 'Linux':
+            # Check for tshark first
+            try:
+                subprocess.run(['sudo', 'apt-get', 'update'])  # Update package lists
+                subprocess.run(['sudo', 'apt-get', 'install', '-y', 'tshark'], check=True)
+                return
+            except Exception as e:
+                error_message = "An error occurred: {}".format(e)
+                print(error_message)                
 
+        elif platform.system() == 'Windows':
+            # Check for tshark in Wireshark installation path (adjust if needed)
+            try:
+                subprocess.run(['C:\\Program Files\\Wireshark\\tshark.exe', '--version'], capture_output=True, text=True, check=True)
+                print("Tshark is already installed (assuming standard Wireshark path).")
+                return
+            except CalledProcessError as e:
+                print(f"Tshark not found in standard Wireshark path. Installing using Chocolatey (if available)...")
+                try:
+                    subprocess.run(['choco', 'install', 'wireshark'], check=True)
+                except CalledProcessError:
+                    print("Chocolatey not found or failed to install. Please install Wireshark manually.")
+
+        else:
+            print(f"Unsupported operating system: {platform.system()}")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def packet_capture(run_duration,output_queue):
     wifi_interface = pyshark_test.get_wifi_interface()
