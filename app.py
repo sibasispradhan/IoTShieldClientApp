@@ -120,24 +120,13 @@ with st.sidebar:
     send_emails_check = col_a.checkbox('Email Alerts',value=False,label_visibility='collapsed')
     st.session_state['user_email'] = st.text_input("User Email:", value="2021sc04667@wilp.bits-pilani.ac.in",label_visibility="collapsed")
 
-def install_tshark():
-    """Installs tshark based on the operating system."""
+def install_tshark():    
     try:
-        # Check if tshark is already installed
-        subprocess.run(['tshark', '--version'], check=True)
-        print("Tshark is already installed.")
-    except subprocess.CalledProcessError:
-        print("Tshark is not installed. Installing...")
-
         # Install tshark using pip
         pip.main(['install', 'tshark'])
-
-        try:
-            # Verify installation after attempting to install
-            subprocess.run(['tshark', '--version'], check=True)
-            print("Tshark installed successfully.")
-        except subprocess.CalledProcessError:
-            print("Failed to install Tshark. Please install it manually.")
+    except Exception as e:
+        error_message = "An error occurred: {}".format(e)
+        print(error_message)
 
 
 def packet_capture(run_duration,output_queue):
