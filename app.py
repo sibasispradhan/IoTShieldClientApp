@@ -119,93 +119,99 @@ with st.sidebar:
 
 def packet_capture(run_duration,output_queue):
     wifi_interface = pyshark_test.get_wifi_interface()
-    print(f'interface: {wifi_interface}')
-    capture = pyshark.LiveCapture(interface=wifi_interface, display_filter='tcp')
-    start_time = time.time()
-    print(f'capture: {capture}')
     try:
-        for packet in capture.sniff_continuously(packet_count=int(run_duration*60)):
-            final_data = pyshark_test.pkt_process(packet)
-            # print(final_data)
-            output_queue.put(final_data)  # Put the data into the queue for Streamlit to read
-            time.sleep(0.1)
+        capture = pyshark.LiveCapture(interface=wifi_interface, display_filter='tcp')
+        start_time = time.time()        
+        try:
+            for packet in capture.sniff_continuously(packet_count=int(run_duration*60)):
+                final_data = pyshark_test.pkt_process(packet)
+                # print(final_data)
+                output_queue.put(final_data)  # Put the data into the queue for Streamlit to read
+                time.sleep(0.1)
 
-            elapsed = time.time() - start_time
-            if elapsed >= run_duration * 60:
-                break
-    except KeyboardInterrupt:
-        print("Capture interrupted by user.")
+                elapsed = time.time() - start_time
+                if elapsed >= run_duration * 60:
+                    break
+        except KeyboardInterrupt:
+            print("Capture interrupted by user.")
+    except Exception as e:
+        error_message = "An error occurred: {}".format(e)
+        print(error_message)
 
 def run_pyshark(run_duration):    
-    st.session_state["attack_cnt"] = 0
-    run_date = str('Time ') + str(datetime.fromtimestamp(time.time()).strftime('%d/%m/%Y'))
-    attack_cnt_container.markdown(f'<p style="color:white;font-size:36px;'
-                                  f'border-radius:2%;">🟢🟢🟢 {st.session_state["attack_cnt"]} compromised data packet 🟢🟢🟢 </p>',
-                                  unsafe_allow_html=True)
-    df_temp = pd.DataFrame()
-    output_queue = multiprocessing.Queue()
-    process = multiprocessing.Process(target=packet_capture, args=(run_duration,output_queue,))
-    process.start()
-    while process.is_alive():
-        # Read from the queue and display the data in Streamlit
-        if not output_queue.empty():
-            final_data, ml_pred, ml_label = output_queue.get()
-            #final_data['Prediction'] = ml_pred
-            final_data[run_date] = datetime.fromtimestamp(time.time()).strftime('%H-%M-%S-%f')[:-3]
+    try:
+        st.session_state["attack_cnt"] = 0
+        run_date = str('Time ') + str(datetime.fromtimestamp(time.time()).strftime('%d/%m/%Y'))
+        attack_cnt_container.markdown(f'<p style="color:white;font-size:36px;'
+                                    f'border-radius:2%;">🟢🟢🟢 {st.session_state["attack_cnt"]} compromised data packet 🟢🟢🟢 </p>',
+                                    unsafe_allow_html=True)
+        df_temp = pd.DataFrame()
+        output_queue = multiprocessing.Queue()
+        process = multiprocessing.Process(target=packet_capture, args=(run_duration,output_queue,))
+        process.start()
+        while process.is_alive():
+            # Read from the queue and display the data in Streamlit
+            if not output_queue.empty():
+                final_data, ml_pred, ml_label = output_queue.get()
+                #final_data['Prediction'] = ml_pred
+                final_data[run_date] = datetime.fromtimestamp(time.time()).strftime('%H-%M-%S-%f')[:-3]
 
-            if len(df_temp)>0:
-                df_temp = pd.concat([df_temp,final_data],ignore_index=True)
+                if len(df_temp)>0:
+                    df_temp = pd.concat([df_temp,final_data],ignore_index=True)
+                else:
+                    # print("Pyshark concat exception!")
+                    df_temp = final_data.copy()
+
+                # SHIFT TO FRONT :
+                cols_to_front = ['tcp.dstport', 'tcp.srcport', 'ip_dst_host', 'ip_src_host', 'attack_type', 'attack_label', run_date]
+                for col in cols_to_front:
+                    df_temp.insert(0, col, df_temp.pop(col))
+
+                df_container.dataframe(df_temp.iloc[::-1])  # You can use st.code(final_data) if you want to format it as code
+                # print(ml_pred)
+                if ml_label == 1:  # 1 is ATTACK | 0 is Normal
+                    st.session_state['attack_cnt'] += 1
+                if st.session_state['attack_cnt'] == 0:
+                    attack_cnt_container.markdown(f'<p style="color:white;font-size:36px;'
+                                                f'border-radius:2%;">🟢🟢🟢 {st.session_state["attack_cnt"]} compromised data packet</p>',
+                                                unsafe_allow_html=True)
+                else:
+                    attack_cnt_container.markdown(f'<p style="color:white;font-size:36px;'
+                                                f'border-radius:2%;">🚨🚨🚨 {st.session_state["attack_cnt"]} compromised data packet</p>',
+                                                unsafe_allow_html=True)
+                time.sleep(0.02)
             else:
-                # print("Pyshark concat exception!")
-                df_temp = final_data.copy()
+                time.sleep(0.1)  # Sleep briefly to avoid busy-waiting
+                curr_datetime = datetime.fromtimestamp(time.time()).strftime('%Y%m%d_%H%M%S')
+        export_file_name = 'pyshark_testing_' + curr_datetime + '.csv'
+        test_data_path = os.path.join("artifacts", "logs", export_file_name)
+        df_temp.to_csv(test_data_path)
 
-            # SHIFT TO FRONT :
-            cols_to_front = ['tcp.dstport', 'tcp.srcport', 'ip_dst_host', 'ip_src_host', 'attack_type', 'attack_label', run_date]
-            for col in cols_to_front:
-                df_temp.insert(0, col, df_temp.pop(col))
-
-            df_container.dataframe(df_temp.iloc[::-1])  # You can use st.code(final_data) if you want to format it as code
-            # print(ml_pred)
-            if ml_label == 1:  # 1 is ATTACK | 0 is Normal
-                st.session_state['attack_cnt'] += 1
-            if st.session_state['attack_cnt'] == 0:
-                attack_cnt_container.markdown(f'<p style="color:white;font-size:36px;'
-                                              f'border-radius:2%;">🟢🟢🟢 {st.session_state["attack_cnt"]} compromised data packet</p>',
-                                              unsafe_allow_html=True)
-            else:
-                attack_cnt_container.markdown(f'<p style="color:white;font-size:36px;'
-                                              f'border-radius:2%;">🚨🚨🚨 {st.session_state["attack_cnt"]} compromised data packet</p>',
-                                              unsafe_allow_html=True)
-            time.sleep(0.02)
-        else:
-            time.sleep(0.1)  # Sleep briefly to avoid busy-waiting
-            curr_datetime = datetime.fromtimestamp(time.time()).strftime('%Y%m%d_%H%M%S')
-    export_file_name = 'pyshark_testing_' + curr_datetime + '.csv'
-    test_data_path = os.path.join("artifacts", "logs", export_file_name)
-    df_temp.to_csv(test_data_path)
-
-    # SEND ALERT EMAIL:
-    if st.session_state['attack_cnt']>0 and send_emails_check:
-        filtered_df = df_temp[df_temp['attack_label'] == 1]
-        email_data_path = os.path.join("artifacts", "logs", "_attack_detection.csv")
-        filtered_df.to_csv(email_data_path)
-        current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        email_subject = "⚠️ Alert! IoTShield network attack detection ⚠️"  
-        body_html = f"""
-                    <html>
-                        <body>
-                            <p>Hello Team,</p>
-                            <p>We have detected an alert from IoT devices. Kindly check the attachment for more details.</p>
-                            <p>Date and Time: {current_datetime}</p>
-                            <p></p>
-                            <p>Thanks</p>
-                            <p>IoTShield App</p>
-                        </body>
-                    </html>
-                    """               
-        email_status = utils.send_email(email_subject, body_html, email_data_path, st.session_state['user_email'])
-        print(email_status)
-    process.join()
+        # SEND ALERT EMAIL:
+        if st.session_state['attack_cnt']>0 and send_emails_check:
+            filtered_df = df_temp[df_temp['attack_label'] == 1]
+            email_data_path = os.path.join("artifacts", "logs", "_attack_detection.csv")
+            filtered_df.to_csv(email_data_path)
+            current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            email_subject = "⚠️ Alert! IoTShield network attack detection ⚠️"  
+            body_html = f"""
+                        <html>
+                            <body>
+                                <p>Hello Team,</p>
+                                <p>We have detected an alert from IoT devices. Kindly check the attachment for more details.</p>
+                                <p>Date and Time: {current_datetime}</p>
+                                <p></p>
+                                <p>Thanks</p>
+                                <p>IoTShield App</p>
+                            </body>
+                        </html>
+                        """               
+            email_status = utils.send_email(email_subject, body_html, email_data_path, st.session_state['user_email'])
+            print(email_status)
+        process.join()
+    except Exception as e:
+        error_message = "An error: {}".format(e)
+        print(error_message)
 
 def delete_files(files_to_delete):
     for file in files_to_delete:
