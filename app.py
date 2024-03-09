@@ -7,7 +7,7 @@ import time
 import multiprocessing
 from datetime import datetime
 import subprocess
-from subprocess import CalledProcessError
+import pip
 import platform
 
 from dotenv import load_dotenv
@@ -123,35 +123,22 @@ with st.sidebar:
 def install_tshark():
     """Installs tshark based on the operating system."""
     try:
-        if platform.system() == 'Linux':
-            # Check for tshark first
-            try:
-                subprocess.run(['tshark', '--version'], capture_output=True, text=True, check=True)
-                print("Tshark is already installed.")
-                return
-            except CalledProcessError as e:
-                print(f"Tshark not found. Installing using apt-get...")
-                subprocess.run(['sudo', 'apt-get', 'update'])  # Update package lists
-                subprocess.run(['sudo', 'apt-get', 'install', '-y', 'tshark'], check=True)
+        # Check if tshark is already installed
+        subprocess.run(['tshark', '--version'], check=True)
+        print("Tshark is already installed.")
+    except subprocess.CalledProcessError:
+        print("Tshark is not installed. Installing...")
 
-        elif platform.system() == 'Windows':
-            # Check for tshark in Wireshark installation path (adjust if needed)
-            try:
-                subprocess.run(['C:\\Program Files\\Wireshark\\tshark.exe', '--version'], capture_output=True, text=True, check=True)
-                print("Tshark is already installed (assuming standard Wireshark path).")
-                return
-            except CalledProcessError as e:
-                print(f"Tshark not found in standard Wireshark path. Installing using Chocolatey (if available)...")
-                try:
-                    subprocess.run(['choco', 'install', 'wireshark'], check=True)
-                except CalledProcessError:
-                    print("Chocolatey not found or failed to install. Please install Wireshark manually.")
+        # Install tshark using pip
+        pip.main(['install', 'tshark'])
 
-        else:
-            print(f"Unsupported operating system: {platform.system()}")
+        try:
+            # Verify installation after attempting to install
+            subprocess.run(['tshark', '--version'], check=True)
+            print("Tshark installed successfully.")
+        except subprocess.CalledProcessError:
+            print("Failed to install Tshark. Please install it manually.")
 
-    except Exception as e:
-        print(f"An error occurred: {e}")
 
 def packet_capture(run_duration,output_queue):
     wifi_interface = pyshark_test.get_wifi_interface()
