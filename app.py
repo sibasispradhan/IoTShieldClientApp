@@ -126,8 +126,8 @@ def install_tshark():
         if platform.system() == 'Linux':
             # Check for tshark first
             try:
-                subprocess.run(['sudo', 'apt-get', 'update'])  # Update package lists
-                subprocess.run(['sudo', 'apt-get', 'install', '-y', 'tshark'], check=True)
+                #subprocess.run(['sudo', 'apt-get', 'update'])  # Update package lists
+                subprocess.run(['apt-get', 'install', '-y', 'tshark'], check=True)
                 return
             except Exception as e:
                 error_message = "An error occurred: {}".format(e)
