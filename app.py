@@ -129,7 +129,7 @@ def install_tshark():
                 result = subprocess.run(['tshark', '--version'], capture_output=True, text=True)
                 print(result.stdout)
             except FileNotFoundError:      
-                subprocess.run(['apt-get', 'install', "-yq", 'tshark'])
+                subprocess.run(['apt', 'install', "-yq", 'tshark'])
 
         elif platform.system() == 'Windows':
             try:
