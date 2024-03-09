@@ -119,9 +119,10 @@ with st.sidebar:
 
 def packet_capture(run_duration,output_queue):
     wifi_interface = pyshark_test.get_wifi_interface()
+    print(f'interface: {wifi_interface}')
     capture = pyshark.LiveCapture(interface=wifi_interface, display_filter='tcp')
     start_time = time.time()
-
+    print(f'capture: {capture}')
     try:
         for packet in capture.sniff_continuously(packet_count=int(run_duration*60)):
             final_data = pyshark_test.pkt_process(packet)
