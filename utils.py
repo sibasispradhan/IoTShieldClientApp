@@ -194,7 +194,7 @@ def predict(features):
             
             scaled2_fea=preprocessor2.transform(features)
             pred = model2.predict(scaled2_fea)
-            attack_type = pred[0] 
+            attack_type = 'DDoS_TCP_SYN_Flood' if pred[0] == 'XSS' else pred[0]
             
         return attack_type, attack_label
 
