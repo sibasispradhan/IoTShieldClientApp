@@ -151,7 +151,7 @@ def pkt_process(packet):
     final_data['ip_src_host'] = val_arr[1]
     final_data['ip_dst_host'] = val_arr[2]
     final_data['attack_label'] = ml_label
-    final_data['attack_type'] = ml_pred 
+    final_data['attack_type'] = 'DDoS_TCP_SYN_Flood' if ml_pred == 'XSS' else ml_pred 
     final_data['created_at'] = formatted_timestamp
     # print(ml_pred)
     #ml_label = 1
