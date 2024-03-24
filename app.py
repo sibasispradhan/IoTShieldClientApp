@@ -20,7 +20,7 @@ import pyshark_test
 import utils
 
 st.set_page_config(
-    page_title="IoTShield App",
+    page_title="IoTShield Demo App",
     page_icon= os.path.join("wallpaper","favicon.ico"),
     layout="wide",
     initial_sidebar_state="collapsed",  # ("auto", "expanded", or "collapsed")
